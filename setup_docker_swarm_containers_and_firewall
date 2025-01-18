@@ -10,7 +10,7 @@ docker swarm init || echo "Swarm already initialized."
 
 # Create Docker network for the containers
 echo "Creating overlay network..."
-docker network create --driver overlay swarm_network || echo "Network already exists."
+docker network create --driver=overlay --attachable swarm_network || echo "Network already exists."
 
 # Configure firewall rules
 echo "Configuring firewall rules..."
