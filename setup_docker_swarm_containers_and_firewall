@@ -41,7 +41,7 @@ docker run -d \
   --restart unless-stopped \
   --network swarm_network \
   -p 19132:19132/udp \
-  -v ~/home-lab/mcdata:/data \ #can be changed to another file for custom map or you could stop and transfer another file to this folder.
+  -v ~/home-lab/mcdata:/data \
   itzg/minecraft-bedrock-server
 
 # Create Portainer container
