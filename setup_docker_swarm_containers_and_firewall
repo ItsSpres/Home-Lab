@@ -1,0 +1,69 @@
+#!/bin/bash
+# For remote access, make sure to install and run Tailscale.
+
+# Exit script on any error
+set -e
+
+# Initialize Docker Swarm
+echo "Initializing Docker Swarm..."
+docker swarm init || echo "Swarm already initialized."
+
+# Create Docker network for the containers
+echo "Creating overlay network..."
+docker network create --driver overlay swarm_network || echo "Network already exists."
+
+# Configure firewall rules
+echo "Configuring firewall rules..."
+sudo ufw allow 19132/udp   # Minecraft Bedrock server
+sudo ufw allow 9000/tcp    # Portainer web interface
+sudo ufw allow 8096/tcp    # Jellyfin web interface
+sudo ufw reload            # Reload firewall to apply changes
+
+# Ensure necessary directories exist and set correct permissions
+echo "Setting up directories and permissions..."
+
+# Minecraft data directory
+mkdir -p ~/mcdata
+sudo chown -R $USER:$USER ~/mcdata
+chmod -R 755 ~/mcdata
+
+# Jellyfin directories
+mkdir -p ~/jellyfin-config ~/jellyfin-cache ~/jellyfin-media
+sudo chown -R $USER:$USER ~/jellyfin-config ~/jellyfin-cache ~/jellyfin-media
+chmod -R 755 ~/jellyfin-config ~/jellyfin-cache ~/jellyfin-media
+
+echo "Directories and permissions set."
+
+# Create Minecraft Bedrock container
+echo "Creating Minecraft Bedrock container..."
+docker run -d \
+  --name minecraft-bedrock-server \
+  --restart unless-stopped \
+  --network swarm_network \
+  -p 19132:19132/udp \
+  -v ~/mcdata:/data \ #can be changed to another file for custom map or you could stop and transfer another file to this folder.
+  itzg/minecraft-bedrock-server
+
+# Create Portainer container
+echo "Creating Portainer container..."
+docker run -d \
+  --name portainer \
+  --restart unless-stopped \
+  --network swarm_network \
+  -p 9000:9000 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  portainer/portainer-ce
+
+# Create Jellyfin container
+echo "Creating Jellyfin container..."
+docker run -d \
+  --name jellyfin \
+  --restart unless-stopped \
+  --network swarm_network \
+  -p 8096:8096 \
+  -v ~/jellyfin-config:/config \
+  -v ~/jellyfin-cache:/cache \
+  -v ~/jellyfin-media:/media \
+  jellyfin/jellyfin
+
+echo "All containers are set up and running, with directories and permissions configured!"
