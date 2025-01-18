@@ -28,22 +28,22 @@ git clone https://github.com/ItsSpres/Home-Lab.git ~/home-lab
 Run the setup script to initialize your Docker environment:
 ```bash
 cd ~/home-lab
-chmod +x setup_docker_swarm_containers_and_firewall.sh
-./setup_docker_swarm_containers_and_firewall.sh
+chmod +x setup_docker_swarm_containers_and_firewall
+./setup_docker_swarm_containers_and_firewall
 ```
 
 ### Startup Script
 Use this script to start Tailscale, Docker services, and containers after a system reboot:
 ```bash
-chmod +x startup_with_tailscale.sh
-./startup_with_tailscale.sh
+chmod +x startup_with_tailscale
+./startup_with_tailscale
 ```
 
 ### Shutdown Script
 Use this script to stop all containers and power down the system:
 ```bash
-chmod +x shutdown.sh
-./shutdown.sh
+chmod +x shutdown
+./shutdown
 ```
 
 ---
@@ -66,7 +66,7 @@ To ensure the startup script runs automatically on boot, create a systemd servic
 
    [Service]
    Type=oneshot
-   ExecStart=/bin/bash /home/$USER/home-lab/startup_with_tailscale.sh
+   ExecStart=/bin/bash /home/$USER/home-lab/startup_with_tail-scale
    User=$USER
    Group=$USER
 
