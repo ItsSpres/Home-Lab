@@ -4,14 +4,6 @@
 # Exit script on any error
 set -e
 
-# Initialize Docker Swarm
-echo "Initializing Docker Swarm..."
-docker swarm init || echo "Swarm already initialized."
-
-# Create Docker network for the containers
-echo "Creating overlay network..."
-docker network create --driver=overlay --attachable swarm_network || echo "Network already exists."
-
 # Configure firewall rules
 echo "Configuring firewall rules..."
 sudo ufw allow 19132/udp   # Minecraft Bedrock server
@@ -38,9 +30,8 @@ echo "Directories and permissions set."
 echo "Creating Minecraft Bedrock container..."
 docker run -d \
   --name minecraft-bedrock-server \
+  --network host \
   --restart unless-stopped \
-  --network swarm_network \
-  -p 19132:19132/udp \
   -v ~/home-lab/mcdata:/data \
   itzg/minecraft-bedrock-server
 
@@ -48,9 +39,8 @@ docker run -d \
 echo "Creating Portainer container..."
 docker run -d \
   --name portainer \
+  --network host \
   --restart unless-stopped \
-  --network swarm_network \
-  -p 9000:9000 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   portainer/portainer-ce
 
@@ -58,12 +48,11 @@ docker run -d \
 echo "Creating Jellyfin container..."
 docker run -d \
   --name jellyfin \
+  --network host \
   --restart unless-stopped \
-  --network swarm_network \
-  -p 8096:8096 \
   -v ~/home-lab/jellyfin-config:/config \
   -v ~/home-lab/jellyfin-cache:/cache \
   -v ~/home-lab/jellyfin-media:/media \
   jellyfin/jellyfin
 
-echo "All containers are set up and running, with directories and permissions configured!"
+echo "All containers are set up and running as standalone containers with host networking!"
