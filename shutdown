@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Exit script on any error
+set -e
+
+echo "Stopping all Docker containers..."
+docker stop $(docker ps -q)
+
+echo "Shutting down Docker..."
+sudo systemctl stop docker
+
+echo "Powering down the system..."
+sudo shutdown now
