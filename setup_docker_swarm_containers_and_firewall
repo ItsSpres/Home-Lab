@@ -23,14 +23,14 @@ sudo ufw reload            # Reload firewall to apply changes
 echo "Setting up directories and permissions..."
 
 # Minecraft data directory
-mkdir -p ~/mcdata
-sudo chown -R $USER:$USER ~/mcdata
-chmod -R 755 ~/mcdata
+mkdir -p ~/home-lab/mcdata
+sudo chown -R $USER:$USER ~/home-lab/mcdata
+chmod -R 755 ~/home-lab/mcdata
 
 # Jellyfin directories
-mkdir -p ~/jellyfin-config ~/jellyfin-cache ~/jellyfin-media
-sudo chown -R $USER:$USER ~/jellyfin-config ~/jellyfin-cache ~/jellyfin-media
-chmod -R 755 ~/jellyfin-config ~/jellyfin-cache ~/jellyfin-media
+mkdir -p ~/home-lab/jellyfin-config ~/home-lab/jellyfin-cache ~/home-lab/jellyfin-media
+sudo chown -R $USER:$USER  ~/home-lab/jellyfin-config ~/home-lab/jellyfin-cache ~/home-lab/jellyfin-media
+chmod -R 755  ~/home-lab/jellyfin-config ~/home-lab/jellyfin-cache ~/home-lab/jellyfin-media
 
 echo "Directories and permissions set."
 
@@ -41,7 +41,7 @@ docker run -d \
   --restart unless-stopped \
   --network swarm_network \
   -p 19132:19132/udp \
-  -v ~/mcdata:/data \ #can be changed to another file for custom map or you could stop and transfer another file to this folder.
+  -v ~/home-lab/mcdata:/data \ #can be changed to another file for custom map or you could stop and transfer another file to this folder.
   itzg/minecraft-bedrock-server
 
 # Create Portainer container
@@ -61,9 +61,9 @@ docker run -d \
   --restart unless-stopped \
   --network swarm_network \
   -p 8096:8096 \
-  -v ~/jellyfin-config:/config \
-  -v ~/jellyfin-cache:/cache \
-  -v ~/jellyfin-media:/media \
+  -v ~/home-lab/jellyfin-config:/config \
+  -v ~/home-lab/jellyfin-cache:/cache \
+  -v ~/home-lab/jellyfin-media:/media \
   jellyfin/jellyfin
 
 echo "All containers are set up and running, with directories and permissions configured!"
