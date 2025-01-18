@@ -17,13 +17,9 @@ fi
 echo "Starting Docker service..."
 sudo systemctl start docker
 
-echo "Checking Docker Swarm status..."
-if ! docker info | grep -q "Swarm: active"; then
-  echo "Docker Swarm is not active. Initializing Swarm..."
-  docker swarm init || echo "Swarm already initialized."
-else
-  echo "Docker Swarm is already active."
-fi
+# Docker Swarm removal
+echo "Stopping Docker Swarm if active..."
+docker swarm leave --force || echo "Swarm not initialized. Skipping..."
 
 echo "Starting all containers..."
 docker start $(docker ps -aq)
