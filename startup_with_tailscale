@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Exit script on any error
+set -e
+
+echo "Starting Tailscale service..."
+sudo systemctl start tailscaled
+
+echo "Ensuring Tailscale is up and running..."
+if ! tailscale status > /dev/null 2>&1; then
+  echo "Tailscale is not up. Bringing it up..."
+  sudo tailscale up --accept-dns || echo "Tailscale is already up."
+else
+  echo "Tailscale is already running."
+fi
+
+echo "Starting Docker service..."
+sudo systemctl start docker
+
+echo "Checking Docker Swarm status..."
+if ! docker info | grep -q "Swarm: active"; then
+  echo "Docker Swarm is not active. Initializing Swarm..."
+  docker swarm init || echo "Swarm already initialized."
+else
+  echo "Docker Swarm is already active."
+fi
+
+echo "Starting all containers..."
+docker start $(docker ps -aq)
+
+echo "Ensuring firewall rules are applied..."
+
+# Apply firewall rules to allow necessary ports
+sudo ufw allow 19132/udp   # Minecraft Bedrock server
+sudo ufw allow 9000/tcp    # Portainer web interface
+sudo ufw allow 8096/tcp    # Jellyfin web interface
+sudo ufw reload            # Reload firewall rules
+
+echo "Tailscale, Docker services, and containers have been started successfully!"
