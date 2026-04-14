@@ -1,169 +1,100 @@
-# 🚀 Enterprise-Grade Hybrid Homelab & Business Ops
-### Zero Trust Networking | Multi-VLAN | Full Observability Stack
-
-This repository contains the **Infrastructure-as-Code (IaC)** and automation logic for a secure, multi-layered home network. It balances **Etsy/eBay business security** with a high-performance **Observability** stack for media and gaming.
-
----
-
-## 📐 1. Network Topology (UniFi Ecosystem)
-Managed via **UniFi Cloud Gateway Ultra (UCG Ultra)** and segmented into four isolated VLANs.
-
-| VLAN | Subnet | Name | Security Policy |
-| :--- | :--- | :--- | :--- |
-| **0** | `192.168.0.x` | **Main** | **Admin Zone:** Full access; hosts Etsy/eBay workstations. |
-| **30** | `192.168.30.x` | **Lab** | **Engine Room:** Docker, Minecraft, Jellyfin. Blocked from Main. |
-| **10** | `192.168.10.x` | **IoT** | **Isolated:** 3D Printers. No cross-VLAN communication. |
-| **20** | `192.168.20.x` | **Guest** | **Sandbox:** Internet only; client isolation enabled. |
-
+# 🚀 Enterprise Hybrid Homelab: Business & Media Ops
+### Multi-Node Architecture | Zero Trust | Full Observability Stack
+This repository serves as the **Infrastructure-as-Code (IaC)** foundation for a production-grade home network. It utilizes a **Split-Node** setup to separate high-intensity media streaming from core lab services and business operations, ensuring 99.9% uptime for critical tasks.
+## 📐 1. Network Topology
+The following diagram visualizes the traffic flow from the **UniFi UCG Ultra** gateway through the isolated VLAN segments and dual-node hardware stack.
 ```mermaid
 graph TD
-    %% Internet Entry
     WAN((Internet)) --> UCG[UniFi Cloud Gateway Ultra]
 
-    %% Gateway to VLANs
-    subgraph "UniFi Core Routing"
-        UCG -- "VLAN 0 (Trusted)" --> Admin[Main Network: 192.168.0.x]
-        UCG -- "VLAN 30 (Isolated)" --> Lab[Lab/Server Network: 192.168.30.x]
-        UCG -- "VLAN 10 (Strict)" --> IoT[IoT Network: 192.168.10.x]
-        UCG -- "VLAN 20 (Guest)" --> Guest[Guest Network: 192.168.20.x]
+    subgraph "UniFi Core Routing (VLANs)"
+        UCG -- "VLAN 0" --> Admin[Main: 192.168.0.x]
+        UCG -- "VLAN 30" --> Lab[Lab: 192.168.30.x]
+        UCG -- "VLAN 10" --> IoT[IoT: 192.168.10.x]
+        UCG -- "VLAN 20" --> Guest[Guest: 192.168.20.x]
     end
 
-    %% Lab Services (Server 2)
-    subgraph "Docker Host (Server 2)"
-        Lab --> Docker[Docker Engine]
-        Docker --> JF[Jellyfin]
-        Docker --> MC[Minecraft Bedrock]
-        Docker --> PM[Prometheus + Node Exporter]
-        Docker --> GF[Grafana]
-        Docker --> HP[Homepage Dashboard]
+    subgraph "Server 1: Media Node (Physical)"
+        Lab --> S1D[Docker Engine]
+        S1D --> JF[Jellyfin]
+        S1D --> TS[Tailscale Tunnel]
+        S1D --> NE1[Node Exporter]
     end
 
-    %% IoT Devices
-    subgraph "IoT / Production"
-        IoT --> Printer1[3D Printer A]
-        IoT --> Printer2[3D Printer B]
+    subgraph "Server 2: Management Node (Physical)"
+        Lab --> S2D[Docker Engine]
+        S2D --> MC[Minecraft]
+        S2D --> PM[Prometheus]
+        S2D --> GF[Grafana]
+        S2D --> NE2[Node Exporter]
     end
 
-    %% Remote Access Logic
-    subgraph "Zero Trust Remote Access"
-        WireGuard[WireGuard VPN] -.-> UCG
-        Tailscale[Tailscale Tunnel] -.-> JF
+    subgraph "Remote Access"
+        WireGuard -.-> UCG
+        TS -.-> JF
     end
 
-    %% Relationships & Permissions
     Admin -- "Full Access" --> Lab
     Admin -- "Management" --> IoT
+    Guest -- "Internet Only" --> WAN
     Lab -- "Blocked" --> Admin
-    IoT -- "Isolated" --> Lab
-```
-
-
-### 🔐 Zero Trust Remote Access
-- **WireGuard:** Direct Admin VPN to the UCG Ultra for full-network management.
-- **Tailscale:** Deployed on **Server 1 (Media)**. External users land directly in Jellyfin, isolated from the rest of the lab.
-
----
-
-## 🐳 2. The Infrastructure Stack (`docker-compose.yml`)
-This stack includes the **Prometheus/Grafana** pipeline required for actual monitoring.
-
-```yaml
-services:
-  # --- Media & Gaming ---
-  jellyfin:
-    image: jellyfin/jellyfin:latest
-    container_name: jellyfin
-    restart: unless-stopped
-    ports: ["8096:8096"]
-    volumes:
-      - ~/home-lab/jellyfin-config:/config
-      - ~/home-lab/jellyfin-media:/media
-
-  minecraft:
-    image: itzg/minecraft-bedrock-server
-    container_name: minecraft-bedrock
-    restart: unless-stopped
-    ports: ["19132:19132/udp"]
-    environment: [EULA=TRUE]
-    volumes: ["~/home-lab/mcdata:/data"]
-
-  # --- Observability (The Monitoring Brain) ---
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    restart: unless-stopped
-    volumes:
-      - ~/home-lab/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    command: ["--config.file=/etc/prometheus/prometheus.yml"]
-
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    restart: unless-stopped
-    ports: ["9100:9100"] # This feeds your CPU/RAM data to Prometheus
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: unless-stopped
-    ports: ["3000:3000"]
-    volumes: ["~/home-lab/grafana-data:/var/lib/grafana"]
-
-  # --- Management ---
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: portainer
-    restart: unless-stopped
-    ports: ["9000:9000"]
-    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
 
 ```
-## 🛠 3. Master Automation Script (lab.sh)
-Unified script for setup, firewall, and service management.
+### **VLAN & Firewall Configuration**
+| VLAN ID | Name | Security Policy | Purpose |
+|---|---|---|---|
+| **0** | **Main** | **Trusted** | Etsy/eBay Business Ops, Admin Workstations. |
+| **10** | **IoT** | **Strict** | 3D Printers, Smart Home Gear. No cross-VLAN access. |
+| **20** | **Guest** | **Isolated** | Sandbox for visitors. Client isolation enabled. |
+| **30** | **Lab** | **Monitored** | Infrastructure Nodes (Server 1 & Server 2). |
+
+**Critical UniFi Firewall Rules:**
+ 1. **Allow Admin to All:** Source VLAN 0 → Destination Any (Action: Accept).
+ 2. **Isolate Lab:** Source VLAN 30 → Destination VLAN 0 (Action: **Drop**). *Protects business data from lab vulnerabilities.*
+ 3. **Guest Sandbox:** Source VLAN 20 → Destination Any/Local (Action: **Drop**).
+## 🛠 2. Getting Started (Installation Guide)
+### **Phase A: Server 1 (Media Head)**
+This node handles high-bandwidth video transcoding and remote access.
+ 1. **Initialize Directories:** Create ~/jellyfin-data/config and ~/jellyfin-data/media.
+ 2. **Automation:** Create media.sh on this server to manage the Jellyfin lifecycle.
+ 3. **Launch:**
+   ```bash
+   chmod +x media.sh
+   ./media.sh setup
+   ./media.sh start
+   
+   ```
+### **Phase B: Server 2 (Command Center)**
+This node manages the global monitoring, gaming, and management tools.
+ 1. **Initialize Stack:**
+   ```bash
+   git clone https://github.com/ItsSpres/homelab.git
+   cd homelab
+   chmod +x lab.sh
+   ./lab.sh setup
+   
+   ```
+ 2. **Start Services:**
+   Launch the full stack or individual services:
+   ```bash
+   ./lab.sh start           # Starts Everything
+   ./lab.sh start minecraft # Starts only Gaming
+   
+   ```
+## 🕹 3. Master Automation Logic
+### **The lab.sh Controller (Server 2)**
+The Master Bash script on Server 2 provides granular control over the lab environment.
 ```bash
-#!/bin/bash
-# 🚀 Master Lab Controller - ItsSpres Homelab v3.0
-set -e
-
-LAB_DIR="$HOME/home-lab"
-COMPOSE_FILE="$HOME/homelab/docker-compose.yml"
-
-case "$1" in
-    setup)
-        echo "🏗️  Initializing local directories..."
-        mkdir -p $LAB_DIR/{mcdata,jellyfin-config,jellyfin-media,portainer-data,grafana-data,prometheus}
-        sudo chown -R $USER:$USER $LAB_DIR
-        
-        # Create Prometheus Config so it works out of the box
-        if [ ! -f $LAB_DIR/prometheus/prometheus.yml ]; then
-          cat <<EOF > $LAB_DIR/prometheus/prometheus.yml
-global:
-  scrape_interval: 15s
-scrape_configs:
-  - job_name: 'node'
-    static_configs:
-      - targets: ['node-exporter:9100']
-EOF
-        fi
-        echo "✅ Setup Complete."
-        ;;
-    start)
-        echo "⚡ Powering up Lab..."
-        sudo systemctl start tailscaled
-        sudo tailscale up --accept-dns
-        sudo ufw allow 19132/udp && sudo ufw allow 8096/tcp && sudo ufw allow 3000/tcp
-        sudo ufw reload
-        docker compose -f $COMPOSE_FILE up -d
-        echo "🚀 LAB IS ONLINE."
-        ;;
-    stop)
-        echo "🛑 Shutting down Lab..."
-        docker compose -f $COMPOSE_FILE stop
-        echo "🔒 LAB IS OFFLINE."
-        ;;
-    *)
-        echo "Usage: ./lab.sh {setup|start|stop}"
-        exit 1
-esac
+# Example Usage:
+./lab.sh status    # View health of all containers
+./lab.sh stop mc   # Take the Minecraft server offline for maintenance
+./lab.sh shutdown  # Emergency full-system stop
 
 ```
+### **The media.sh Controller (Server 1)**
+The dedicated media script ensures **Tailscale** and **Jellyfin** are synchronized for remote users.
+## 📊 4. Observability & Monitoring
+The lab utilizes a **Prometheus/Grafana** pipeline to monitor both physical nodes from a single pane of glass.
+ * **Scraping:** Prometheus (Server 2) reaches out to Node Exporters on both servers.
+ * **Visualization:** Accessible at http://<Server-2-IP>:3000.
+ * **Dashboard:** Import **ID 1860** for a real-time view of CPU usage, thermals, and memory across the entire network.
