@@ -15,6 +15,7 @@ Managed via **UniFi Cloud Gateway Ultra (UCG Ultra)** and segmented into four is
 | **10** | `192.168.10.x` | **IoT** | **Isolated:** 3D Printers. No cross-VLAN communication. |
 | **20** | `192.168.20.x` | **Guest** | **Sandbox:** Internet only; client isolation enabled. |
 
+```mermaid
 graph TD
     %% Internet Entry
     WAN((Internet)) --> UCG[UniFi Cloud Gateway Ultra]
@@ -54,6 +55,7 @@ graph TD
     Admin -- "Management" --> IoT
     Lab -- "Blocked" --> Admin
     IoT -- "Isolated" --> Lab
+’’’
 
 
 ### 🔐 Zero Trust Remote Access
