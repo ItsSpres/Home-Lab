@@ -1,16 +1,25 @@
+# =============================================================================
+# Server 1: Media Node
+# Services: Jellyfin (media server), Node Exporter (metrics agent)
+# Node Exporter exposes server health to Prometheus on Server 2.
+# =============================================================================
+
 services:
+
   jellyfin:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin
-    ports: ["8096:8096"]
+    ports:
+      - "8096:8096"
     volumes:
       - ~/jellyfin-data/config:/config
       - ~/jellyfin-data/cache:/cache
-      - /your/media/path:/media # CHANGE THIS to your actual drive path
+      - /your/media/path:/media   # <-- CHANGE THIS to your actual media drive path
     restart: unless-stopped
 
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter-s1
-    ports: ["9100:9100"]
+    ports:
+      - "9100:9100"
     restart: unless-stopped
