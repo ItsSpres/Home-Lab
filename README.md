@@ -124,7 +124,3 @@ EOF
 esac
 
 ```
-## 💼 4. Career Portability (Disney Technical Pivot)
- * **Full-Stack Observability:** Using Prometheus + Node Exporter demonstrates an understanding of "health monitoring," a core requirement for Disney's studio support roles.
- * **Network Hardening:** Using VLANs and Zero Trust tunnels shows a high-level security mindset beyond simple helpdesk troubleshooting.
- * **Automation:** Consolidating scripts into a single controller demonstrates high-level operational efficiency.
