@@ -1,0 +1,16 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    ports: ["8096:8096"]
+    volumes:
+      - ~/jellyfin-data/config:/config
+      - ~/jellyfin-data/cache:/cache
+      - /your/media/path:/media # CHANGE THIS to your actual drive path
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter-s1
+    ports: ["9100:9100"]
+    restart: unless-stopped
