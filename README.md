@@ -55,7 +55,7 @@ graph TD
     Admin -- "Management" --> IoT
     Lab -- "Blocked" --> Admin
     IoT -- "Isolated" --> Lab
-’’’
+```
 
 
 ### 🔐 Zero Trust Remote Access
