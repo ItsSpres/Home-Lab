@@ -15,6 +15,47 @@ Managed via **UniFi Cloud Gateway Ultra (UCG Ultra)** and segmented into four is
 | **10** | `192.168.10.x` | **IoT** | **Isolated:** 3D Printers. No cross-VLAN communication. |
 | **20** | `192.168.20.x` | **Guest** | **Sandbox:** Internet only; client isolation enabled. |
 
+graph TD
+    %% Internet Entry
+    WAN((Internet)) --> UCG[UniFi Cloud Gateway Ultra]
+
+    %% Gateway to VLANs
+    subgraph "UniFi Core Routing"
+        UCG -- "VLAN 0 (Trusted)" --> Admin[Main Network: 192.168.0.x]
+        UCG -- "VLAN 30 (Isolated)" --> Lab[Lab/Server Network: 192.168.30.x]
+        UCG -- "VLAN 10 (Strict)" --> IoT[IoT Network: 192.168.10.x]
+        UCG -- "VLAN 20 (Guest)" --> Guest[Guest Network: 192.168.20.x]
+    end
+
+    %% Lab Services (Server 2)
+    subgraph "Docker Host (Server 2)"
+        Lab --> Docker[Docker Engine]
+        Docker --> JF[Jellyfin]
+        Docker --> MC[Minecraft Bedrock]
+        Docker --> PM[Prometheus + Node Exporter]
+        Docker --> GF[Grafana]
+        Docker --> HP[Homepage Dashboard]
+    end
+
+    %% IoT Devices
+    subgraph "IoT / Production"
+        IoT --> Printer1[3D Printer A]
+        IoT --> Printer2[3D Printer B]
+    end
+
+    %% Remote Access Logic
+    subgraph "Zero Trust Remote Access"
+        WireGuard[WireGuard VPN] -.-> UCG
+        Tailscale[Tailscale Tunnel] -.-> JF
+    end
+
+    %% Relationships & Permissions
+    Admin -- "Full Access" --> Lab
+    Admin -- "Management" --> IoT
+    Lab -- "Blocked" --> Admin
+    IoT -- "Isolated" --> Lab
+
+
 ### 🔐 Zero Trust Remote Access
 - **WireGuard:** Direct Admin VPN to the UCG Ultra for full-network management.
 - **Tailscale:** Deployed on **Server 1 (Media)**. External users land directly in Jellyfin, isolated from the rest of the lab.
