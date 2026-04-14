@@ -1,26 +1,42 @@
+# =============================================================================
+# Server 2: Command Center / Management Node
+# Services: Minecraft Bedrock, Prometheus, Grafana, Node Exporter
+# Prometheus scrapes metrics from both Server 1 and Server 2 Node Exporters.
+# Grafana visualizes all collected metrics on a central dashboard.
+# =============================================================================
+
 services:
+
   minecraft:
     image: itzg/minecraft-bedrock-server
     container_name: minecraft-bedrock
-    ports: ["19132:19132/udp"]
-    environment: [EULA=TRUE]
-    volumes: ["~/home-lab/mcdata:/data"]
+    ports:
+      - "19132:19132/udp"
+    environment:
+      - EULA=TRUE
+    volumes:
+      - ~/home-lab/mcdata:/data
     restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
-    volumes: ["~/home-lab/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"]
+    volumes:
+      - ~/home-lab/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
-    ports: ["3000:3000"]
-    volumes: ["~/home-lab/grafana-data:/var/lib/grafana"]
+    ports:
+      - "3000:3000"
+    volumes:
+      - ~/home-lab/grafana-data:/var/lib/grafana
     restart: unless-stopped
 
   node-exporter:
     image: prom/node-exporter:latest
-    container_name: node-exporter
-    ports: ["9100:9100"]
+    container_name: node-exporter-s2
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
