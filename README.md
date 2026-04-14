@@ -1,102 +1,133 @@
+Here is the **complete, consolidated documentation**. I have formatted this as one continuous Markdown block. You can copy this entire section and paste it directly into your README.md on GitHub.
+It includes your **Network Topology**, the corrected **Docker Compose** configuration, and the professional **Master Bash Script** all in one place.
+```markdown
+# 🚀 Enterprise-Grade Hybrid Homelab & Business Ops
+### Zero Trust Networking | Multi-VLAN | Media, Gaming & 3D Printing Automation
 
-# Home-Lab
-
-This repository contains scripts to set up and manage a home lab environment using Docker, Docker Swarm, and Tailscale. The provided scripts automate the setup, startup, and shutdown processes for your containers and services.
-
-## Files
-
-1. **`setup_docker_swarm_containers_and_firewall.sh`**  
-   Sets up Docker Swarm, initializes containers (Minecraft Bedrock, Portainer, Jellyfin), configures file permissions, and applies firewall rules.
-
-2. **`shutdown.sh`**  
-   Stops all running Docker containers and gracefully shuts down the system.
-
-3. **`startup_with_tailscale.sh`**  
-   Ensures Tailscale, Docker services, and all containers are running after a reboot.
+This repository contains the **Infrastructure-as-Code (IaC)** and automation logic for a multi-layered home network. It is designed to provide a secure environment for **Etsy/eBay business operations** while hosting high-performance media and gaming services with **Zero Trust** security.
 
 ---
 
-## How to Use
+## 📐 1. Network Topology (UniFi Ecosystem)
+The network is powered by a **UniFi Cloud Gateway Ultra (UCG Ultra)** and segmented into four distinct VLANs to enforce lateral movement protection.
 
-### Clone the Repository
-Clone this repository to your home directory:
-```bash
-git clone https://github.com/ItsSpres/Home-Lab.git ~/home-lab
-```
+| VLAN | Subnet | Name | Security Policy |
+| :--- | :--- | :--- | :--- |
+| **0** | `192.168.0.x` | **Main** | **The Admin Zone.** Full access to all other VLANs; hosts Etsy/eBay workstations. |
+| **30** | `192.168.30.x` | **Lab** | **The Engine Room.** Isolated from Main. Hosts the Docker stack and Minecraft. |
+| **10** | `192.168.10.x` | **IoT** | **Isolated Zone.** 3D Printers and smart devices. No access to other VLANs. |
+| **20** | `192.168.20.x` | **Guest** | **Sandbox Zone.** Visitors get internet only; client isolation enabled. |
 
-### Setup Script
-Run the setup script to initialize your Docker environment:
-```bash
-cd ~/home-lab
-chmod +x setup_docker_swarm_containers_and_firewall
-./setup_docker_swarm_containers_and_firewall
-```
-
-### Startup Script
-Use this script to start Tailscale, Docker services, and containers after a system reboot:
-```bash
-chmod +x startup_with_tailscale
-./startup_with_tailscale
-```
-
-### Shutdown Script
-Use this script to stop all containers and power down the system:
-```bash
-chmod +x shutdown
-./shutdown
-```
+### 🔐 Remote Access Strategy
+- **WireGuard (Router-Level):** Primary **Admin VPN** hosted on the UCG Ultra. Allows total management of the lab and 3D printers from anywhere.
+- **Tailscale (Application-Level):** Deployed on **Server 1 (Media)**. Creates a Zero Trust tunnel where external users land directly inside the Jellyfin environment, bypassing the physical network hardware.
 
 ---
 
-## Automating Scripts
+## 🐳 2. The Infrastructure Stack (`docker-compose.yml`)
+All services are managed via Docker Compose for consistency and easy updates.
 
-### Startup on Boot
-To ensure the startup script runs automatically on boot, create a systemd service:
+```yaml
+services:
+  # Media Server (Jellyfin)
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    volumes:
+      - ~/home-lab/jellyfin-config:/config
+      - ~/home-lab/jellyfin-cache:/cache
+      - ~/home-lab/jellyfin-media:/media
 
-1. Create a service file:
-   ```bash
-   sudo nano /etc/systemd/system/startup_with_tailscale.service
-   ```
+  # Minecraft Bedrock Server
+  minecraft:
+    image: itzg/minecraft-bedrock-server
+    container_name: minecraft-bedrock
+    restart: unless-stopped
+    ports:
+      - "19132:19132/udp"
+    environment:
+      - EULA=TRUE
+    volumes:
+      - ~/home-lab/mcdata:/data
 
-2. Add the following content:
-   ```ini
-   [Unit]
-   Description=Run Startup Script with Tailscale
-   After=network.target docker.service tailscaled.service
+  # Management (Portainer)
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/home-lab/portainer-data:/data
 
-   [Service]
-   Type=oneshot
-   ExecStart=/bin/bash /home/$USER/home-lab/startup_with_tail-scale
-   User=$USER
-   Group=$USER
+  # Monitoring (Grafana)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ~/home-lab/grafana-data:/var/lib/grafana
 
-   [Install]
-   WantedBy=multi-user.target
-   ```
+```
+## 🛠 3. Master Automation Script (lab.sh)
+This script replaces all individual startup/shutdown/setup files.
+```bash
+#!/bin/bash
+# 🚀 Master Lab Controller - ItsSpres Homelab
+set -e
 
-3. Reload systemd and enable the service:
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable startup_with_tailscale.service
-   ```
+LAB_DIR="$HOME/home-lab"
+COMPOSE_FILE="$HOME/homelab/docker-compose.yml"
 
----
+case "$1" in
+    setup)
+        echo "🏗️  Initializing local directories..."
+        mkdir -p $LAB_DIR/mcdata $LAB_DIR/jellyfin-config $LAB_DIR/jellyfin-cache $LAB_DIR/jellyfin-media $LAB_DIR/portainer-data $LAB_DIR/grafana-data
+        sudo chown -R $USER:$USER $LAB_DIR
+        echo "✅ Setup Complete."
+        ;;
+    start)
+        echo "⚡ Powering up Lab Services..."
+        sudo systemctl start tailscaled
+        sudo tailscale up --accept-dns || echo "Tailscale already active."
+        sudo ufw allow 19132/udp # Minecraft
+        sudo ufw allow 8096/tcp  # Jellyfin
+        sudo ufw allow 9000/tcp  # Portainer
+        sudo ufw allow 3000/tcp  # Grafana
+        sudo ufw reload
+        docker compose -f $COMPOSE_FILE up -d
+        echo "🚀 LAB IS ONLINE."
+        ;;
+    stop)
+        echo "🛑 Shutting down Lab Services..."
+        docker compose -f $COMPOSE_FILE stop
+        sudo systemctl stop docker
+        echo "🔒 LAB IS OFFLINE."
+        ;;
+    shutdown)
+        echo "⚠️  CRITICAL: SYSTEM SHUTDOWN INITIATED..."
+        docker compose -f $COMPOSE_FILE stop
+        sudo shutdown now
+        ;;
+    *)
+        echo "Usage: ./lab.sh {setup|start|stop|shutdown}"
+        exit 1
+esac
 
-## Dependencies
-
-- **Docker**: Install using:
-  ```bash
-  curl -fsSL https://get.docker.com -o get-docker.sh
-  sudo sh get-docker.sh
-  ```
-
-- **Tailscale**: Install using:
-  ```bash
-  curl -fsSL https://tailscale.com/install.sh | sh
-  ```
-
----
-
-## Contributing
-
-Feel free to open issues or submit pull requests for improvements and additional features.
+```
+## 🚀 4. Deployment Instructions
+ 1. **Initialize:** chmod +x lab.sh && ./lab.sh setup
+ 2. **Launch Stack:** ./lab.sh start
+ 3. **Emergency Stop:** ./lab.sh stop
+## 💼 5. Career Portfolio Context (Disney Technical Support)
+This project demonstrates technical proficiency in:
+ * **Enterprise Networking:** Multi-VLAN architecture and firewall management.
+ * **Linux Administration:** Bash automation, UFW configuration, and system service management.
+ * **Virtualization:** Deploying production services via Docker and Infrastructure-as-Code.
+ * **Security:** Implementing Zero Trust networking via Tailscale.
